@@ -10,7 +10,7 @@ CSV_DIR = "./csv"
 
 DEFAULT_DAYS = 7
 
-class upbank():
+class Up():
 
   def __init__(self, token):
     self.url_prefix = "https://api.up.com.au/api/v1"

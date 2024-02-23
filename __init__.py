@@ -1,1 +1,1 @@
-from upbank import upbank
+print("upbank init")
