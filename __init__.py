@@ -1,1 +1,2 @@
-print("upbank init")
+
+from . upbank import Up
