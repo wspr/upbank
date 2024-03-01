@@ -73,12 +73,18 @@ class Up():
       print("{:>10} - {}".format(x["attributes"]["balance"]["value"],
                                  x["attributes"]["displayName"]))
 
-  def categories(self):
-    print("CATEGORIES")
-    cat = self.get("/categories")
-    for x in cat["data"]:
-      if x["relationships"]["parent"]["data"] is not None:
-        print("{:>35} - {:<35}".format(x["id"], x["attributes"]["name"]))
+  def getcategories(self, Print=False):
+    if not hasattr(self,"categories"):
+      cat = self.get("/categories")
+      self.categories = {"other": "Other"}
+      for x in cat["data"]:
+        if x["relationships"]["parent"]["data"] is not None:
+          self.categories[x["id"]] = x["attributes"]["name"]
+    if Print:
+      print("GET CATEGORIES")
+      for x in self.categories:
+        print("{:>35} - {:<35}".format(
+          x, self.categories[x]))
 
   def gettransactions(self, mode, cache=True):
     print("TRANSACTIONS")
@@ -141,14 +147,16 @@ class Up():
             parcat, cat)
 
 
-  def summarise(self, data):
+  def summarise(self, data, OtherThresh=0.01):
     print("SUMMARISE TRANSACTIONS")
     catsumm = self.catsummary(data)
-    shortcat = self.summaryfindother(catsumm)
+    shortcat = self.summaryfindother(catsumm, OtherThresh=OtherThresh)
     shortsumm = self.summaryshorten(catsumm,shortcat)
 
     # self.summaryprint(catsumm,heading="FULL SUMMARY",filename="upsummaryfull.csv")
     self.summaryprint(shortsumm,heading="SHORT SUMMARY",filename="upsummary.csv")
+    
+    return shortsumm
     
   def catsummary(self, data):
     categorytotals = {}
@@ -187,8 +195,8 @@ class Up():
       "counts": categorycount,
       }
   
-  def summaryfindother(self,catsumm):
-    thresh = abs(catsumm["spendtotal"]/100)
+  def summaryfindother(self,catsumm, OtherThresh=0.01):
+    thresh = abs(catsumm["spendtotal"]*OtherThresh)
     shortcat = {}
     for ii in catsumm["subtotals"]:
       if ii is not None:
@@ -301,8 +309,8 @@ class Up():
 
 
 
-  def compare(self, data):
-    print("xx COMPARE TRANSACTIONS")
+  def compare(self, data, OtherThresh=0.01):
+    print("COMPARE TRANSACTIONS")
     categorytotals = {}
     categorycount = {}
     spendingtotal = {}
@@ -311,7 +319,8 @@ class Up():
     firstper = list(data)[0]
 
     catsumm = self.catsummary(data[firstper])
-    shortcat = self.summaryfindother(catsumm)
+    shortcat = self.summaryfindother(catsumm,
+      OtherThresh=OtherThresh)
     
     for per in data:
       categorytotals[per] = {}
@@ -345,6 +354,8 @@ class Up():
         print("")
 
     #print("{:>25}  {:>6}".format("Spending total", spendingtotal))
+    
+    return categorytotals
 
 
 
