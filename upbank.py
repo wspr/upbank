@@ -55,7 +55,9 @@ class Up():
         pickle.dump(data, file, pickle.HIGHEST_PROTOCOL)
     return data
 
-  def patchcat(self, id, cat):
+  def patchcat(self, id, cat, catorig):
+    if cat == catorig:
+        return
     api_url = self.url_prefix + "/transactions/" + id + "/relationships/category"
     patch = {"data": {"type": "categories", "id": cat}}
     p = requests.patch(api_url, json.dumps(patch), headers=self.headers)
@@ -133,18 +135,12 @@ class Up():
       att = x["attributes"]
       rel = x["relationships"]
       amount = att["amount"]["valueInBaseUnits"]
-      parcat = rel["parentCategory"]["data"]
       cat = rel["category"]["data"]
-      if parcat is None:
-        parcat = "none"
-      else:
-        parcat = parcat["id"]
       if cat is None:
         cat = "none"
       else:
         cat = cat["id"]
-      print(att["createdAt"][0:10], att["description"], att["amount"]["value"],
-            parcat, cat)
+      print(att["createdAt"][0:10], att["description"], att["amount"]["value"], cat)
 
 
   def summarise(self, data, OtherThresh=0.01):
@@ -359,7 +355,7 @@ class Up():
 
 
 
-  def fixcategories(self, data, upcategorydict):
+  def fixcategories(self, data, upcategorydict, vendors):
     print("FIX CATEGORIES")
     upvendordict = {}
     for cat in upcategorydict:
@@ -371,20 +367,39 @@ class Up():
       rel = x["relationships"]
       amount = att["amount"]["valueInBaseUnits"]
       parcat = rel["parentCategory"]["data"]
+      catorig = rel["category"]["data"]
       notTransfer = rel["transferAccount"]["data"] is None
-      lookup = upvendordict.get(att["description"])
-      if (parcat is None) and notTransfer and not(lookup=="income"):
-        self.tryfixcat(x, lookup)
+      if notTransfer:
+        lookup = upvendordict.get(att["description"])
+        vendor = vendors.get(att["description"])
+        if lookup is not None and vendor is not None:
+            error("Listed in both categories to fix.")
+        if not(lookup=="income"):
+            if (lookup is not None) and (parcat is None):
+              print(att["createdAt"][0:10], att["description"], att["amount"]["value"])
+              self.patchcat(x["id"], lookup, None)
+            if vendor is not None:
+              catid = catorig.get("id") if parcat is not None else None
+              print(att["createdAt"][0:10], att["description"], att["amount"]["value"],catid)
+              for t in vendor:
+                cost = int(t[1]*100)  # whole number of cents
+                match t[0]:
+                  case "=" | "==":
+                    if abs(amount) == cost:
+                      self.patchcat(x["id"],t[2],catid)
+                      break
+                  case "<":
+                    if abs(amount) < cost:
+                      self.patchcat(x["id"],t[2],catid)
+                      break
+                  case ">=":
+                    if abs(amount) >= cost:               
+                      self.patchcat(x["id"],t[2],catid)
+                      break
         c = c + 1
     if c == 0:
       print("All transactions categorised, nothing to do.")
 
-  def tryfixcat(self, x, lookup):
-    att = x["attributes"]
-    print(att["createdAt"][0:10], att["description"], att["amount"]["value"])
-    if (lookup is not None):
-      self.patchcat(x["id"], lookup)
-    
 
   def stateload(self):
     filepath = CACHE_DIR + "/_upstate.pickle"
