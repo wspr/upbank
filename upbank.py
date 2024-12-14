@@ -129,22 +129,38 @@ class Up():
     print("#: " + str(c))
     return data
 
-  def show(self, data):
+  def show(self, data, onlycat="", lessthan=99999, morethan=-99999):
     print("SHOW TRANSACTIONS")
     for x in data:
       att = x["attributes"]
       rel = x["relationships"]
       amount = att["amount"]["valueInBaseUnits"]
       cat = rel["category"]["data"]
+      notTransfer = rel["transferAccount"]["data"] is None
       if cat is None:
         cat = "none"
       else:
         cat = cat["id"]
-      print(att["createdAt"][0:10], att["description"], att["amount"]["value"], cat)
+      if notTransfer and (onlycat=="" or cat==onlycat) and amount < lessthan and amount > morethan:
+        print(att["createdAt"][0:10], att["description"], att["amount"]["value"], cat)
+
+  def showincome(self, data):
+    print("SHOW TRANSACTIONS")
+    for x in data:
+      att = x["attributes"]
+      rel = x["relationships"]
+      amount = att["amount"]["valueInBaseUnits"]
+      cat = rel["category"]["data"]
+      notTransfer = rel["transferAccount"]["data"] is None
+      if cat is None:
+        cat = "none"
+      else:
+        cat = cat["id"]
+      if notTransfer and amount > 0:
+        print(att["createdAt"][0:10], att["description"], att["amount"]["value"], cat)
 
 
   def summarise(self, data, OtherThresh=0.01):
-    print("SUMMARISE TRANSACTIONS")
     catsumm = self.catsummary(data)
     shortcat = self.summaryfindother(catsumm, OtherThresh=OtherThresh)
     shortsumm = self.summaryshorten(catsumm,shortcat)
@@ -229,32 +245,33 @@ class Up():
     filepath = CSV_DIR + "/"
     if not os.path.isdir(filepath):
       os.makedirs(filepath)
-    
-    print("{:>25}  {:>6}  {:>6}".format(
+
+    print(heading)
+    print("{:>12}  {:>6}  {:>8}".format(
       "Spending", 
       str(round(
         100*catsumm["spendsubtotal"]/catsumm["incometotal"]
         ))+"%", 
       catsumm["spendsubtotal"]
       ))
-    print("{:>25}  {:>6}  {:>6}".format(
+    print("{:>12}  {:>6}  {:>8}".format(
       "Investments",
       str(round(
         100*catsumm["subtotals"]["investments"]/catsumm["incometotal"]
         ))+"%",
         catsumm["subtotals"]["investments"]
       ))
-    print("{:>25}  {:>6}  {:>6}".format(
+    print("{:>12}  {:>6}  {:>8}".format(
       "Total", 
       str(round(
         100*catsumm["spendtotal"]/catsumm["incometotal"]
         ))+"%", 
       catsumm["spendtotal"]
       ))
-    print("{:>25}  {:>6}  {:>6}".format(
+    print("{:>12}  {:>6}  {:>8}".format(
       "Income", "100%", catsumm["incometotal"]
       ))
-    print("{:>25}  {:>6}  {:>6}".format(
+    print("{:>12}  {:>6}  {:>8}".format(
       "Net", 
       str(round(
         100*(catsumm["incometotal"]+catsumm["spendtotal"])/catsumm["incometotal"]
@@ -263,7 +280,6 @@ class Up():
       ))
     print("")
     
-    print(heading)
     with open(CSV_DIR + "/" + filename, "w") as file:
       file.write("CATEGORY,COUNT,TOTAL\n")
       for ii in catsumm["subtotals"]:
@@ -271,7 +287,7 @@ class Up():
           file.write(ii + "," +
             str(catsumm["counts"][ii]) + "," +
             str(abs(catsumm["subtotals"][ii])) + "\n")
-          print("{:>25}  {:>6}  {:>6}".format(ii[0:24], catsumm["counts"][ii],catsumm["subtotals"][ii]))
+          # print("{:>25}  {:>6}  {:>6}".format(ii[0:24], catsumm["counts"][ii],catsumm["subtotals"][ii]))
 
 
 
@@ -394,6 +410,10 @@ class Up():
                       break
                   case ">=":
                     if abs(amount) >= cost:               
+                      self.patchcat(x["id"],t[2],catid)
+                      break
+                  case ">":
+                    if abs(amount) > cost:               
                       self.patchcat(x["id"],t[2],catid)
                       break
         c = c + 1
