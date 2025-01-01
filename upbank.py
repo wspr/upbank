@@ -330,7 +330,7 @@ class Up():
 
 
 
-  def compare(self, data, OtherThresh=0.01):
+  def compare(self, data, OtherThresh=0):
     print("COMPARE TRANSACTIONS")
     categorytotals = {}
     categorycount = {}
