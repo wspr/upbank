@@ -173,7 +173,12 @@ class Up():
     self.summaryprint(shortsumm,heading="SHORT SUMMARY",filename="upsummary.csv")
     
     return shortsumm
-    
+
+  def summariselong(self, data, OtherThresh=0.01):
+    catsumm = self.catsummary(data)
+    self.summaryprint(catsumm,heading="FULL SUMMARY",filename="upsummaryfull.csv")
+    return catsumm
+
   def catsummary(self, data):
     categorytotals = {}
     categorycount = {}
