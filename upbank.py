@@ -12,7 +12,7 @@ DEFAULT_DAYS = 7
 
 class Up():
 
-  def __init__(self, token):
+  def __init__(self, token, page_size = 100):
     self.url_prefix = "https://api.up.com.au/api/v1"
     self.headers = {
       "Content-Type": "application/json",
@@ -20,6 +20,7 @@ class Up():
     }
     self.now = datetime.now(timezone.utc).astimezone()
     self.today = (self.now.isoformat())[0:10]
+    self.page_size = page_size
     self.stateload()
     self.ping()
 
@@ -38,7 +39,10 @@ class Up():
         data = pickle.load(file)
     else:
       api_url = self.url_prefix + point
-      response = requests.get(api_url, headers=self.headers, params=params)
+      response = requests.get(api_url,
+          headers = self.headers,
+          params = params | {"page[size]":self.page_size}
+      )
       if not response.ok:
         print(response)
         print(response.reason)
