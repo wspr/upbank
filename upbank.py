@@ -59,13 +59,13 @@ class Up():
         pickle.dump(data, file, pickle.HIGHEST_PROTOCOL)
     return data
 
-  def patchcat(self, id, cat, catorig):
+  def patchcat(self, id, cat, catorig, str):
     if cat == catorig:
         return
     api_url = self.url_prefix + "/transactions/" + id + "/relationships/category"
     patch = {"data": {"type": "categories", "id": cat}}
     p = requests.patch(api_url, json.dumps(patch), headers=self.headers)
-    print(p)
+    print(*str, (catorig or "none") + " -> " + cat)
     return p
 
   def ping(self):
@@ -309,7 +309,7 @@ class Up():
     tax = att["description"] == "Withholding Tax"
     ignore = False
     if len(tags) > 0:
-      ignore = tags[0]["id"] == "ignore"
+      ignore = tags[0]["id"] in ("ignore", "savings")
     notTransfer = rel["transferAccount"]["data"] is None
     if ignore:
       cat = None
@@ -394,6 +394,7 @@ class Up():
       parcat = rel["parentCategory"]["data"]
       catorig = rel["category"]["data"]
       notTransfer = rel["transferAccount"]["data"] is None
+      transactionStr = [att["createdAt"][0:10], att["description"], att["amount"]["value"]]
       if notTransfer:
         lookup = upvendordict.get(att["description"])
         vendor = vendors.get(att["description"])
@@ -401,29 +402,27 @@ class Up():
             error("Listed in both categories to fix.")
         if not(lookup=="income"):
             if (lookup is not None) and (parcat is None):
-              print(att["createdAt"][0:10], att["description"], att["amount"]["value"])
-              self.patchcat(x["id"], lookup, None)
+              self.patchcat(x["id"], lookup, None, transactionStr)
             if vendor is not None:
               catid = catorig.get("id") if parcat is not None else None
-              print(att["createdAt"][0:10], att["description"], att["amount"]["value"],catid)
               for t in vendor:
                 cost = int(t[1]*100)  # whole number of cents
                 match t[0]:
                   case "=" | "==":
                     if abs(amount) == cost:
-                      self.patchcat(x["id"],t[2],catid)
+                      self.patchcat(x["id"],t[2],catid,transactionStr)
                       break
                   case "<":
                     if abs(amount) < cost:
-                      self.patchcat(x["id"],t[2],catid)
+                      self.patchcat(x["id"],t[2],catid,transactionStr)
                       break
                   case ">=":
                     if abs(amount) >= cost:               
-                      self.patchcat(x["id"],t[2],catid)
+                      self.patchcat(x["id"],t[2],catid,transactionStr)
                       break
                   case ">":
                     if abs(amount) > cost:               
-                      self.patchcat(x["id"],t[2],catid)
+                      self.patchcat(x["id"],t[2],catid,transactionStr)
                       break
         c = c + 1
     if c == 0:
